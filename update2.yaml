@@ -1,0 +1,22 @@
+params:
+  Card_1:
+    title: "Hello"
+    content: "What's up ??"
+  Card_2:
+    title: "How"
+    content: "How are you ??"
+  Card_3:
+    title: "When"
+    content: "When did you arrive ??"
+  Card_4:
+    title: "Where"
+    content: "Where do you plan on going ??"
+  Card_5:
+    title: "Why"
+    content: "Why are you going there ??"
+
+merge_dict: False
+
+node_types_to_update: [ webserver ]
+
+configuration_node_id: config_holder

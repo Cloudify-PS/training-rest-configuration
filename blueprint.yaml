@@ -1,0 +1,210 @@
+tosca_definitions_version: cloudify_dsl_1_3
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/5.0.0/types.yaml
+  - plugin:cloudify-openstack-plugin
+  - plugin:cloudify-utilities-plugin
+  - types.yaml
+
+
+
+inputs:
+
+  agent_key_private:
+    description: >
+      The content of the agent's private key.
+    default: { get_secret: agent_key_private }
+
+  agent_key_public:
+    description: >
+      The content of the agent's public key.
+    default: { get_secret: agent_key_public }
+
+  agent_user:
+    description: >
+      The username of the agent running on the instance created from the image.
+    default: centos
+
+  image:
+    description: >
+      An Openstack Image ID. Tested with centos image.
+    type: string
+    default: { get_secret: centos_core_image }
+
+  flavor:
+    description: >
+      An Openstack Flavor ID.
+    default: '2'
+
+  network:
+    type: string
+    default: { get_secret: private_network_name }
+
+  external_network:
+    type: string
+    default: { get_secret: external_network_name }
+
+  configuration:
+    default:
+      Card_1:
+        title: "First"
+        content: "First Card"
+      Card_2:
+        title: "Second"
+        content: "Second Card"
+      Card_3:
+        title: "Third"
+        content: "Third Card"
+      Card_4:
+        title: "Fourth"
+        content: "Fourth Card"
+      Card_5:
+        title: "Fifth"
+        content: "Fifth Card"
+
+dsl_definitions:
+
+  openstack_config: &openstack_config
+    username: { get_secret: keystone_username }
+    password: { get_secret: keystone_password }
+    tenant_name: { get_secret: keystone_tenant_name }
+    auth_url: { get_secret: keystone_url }
+    region: { get_secret: keystone_region }
+
+
+node_templates:
+
+  webserver_sg:
+    type: cloudify.openstack.nodes.SecurityGroup
+    properties:
+      description: "Flaskerver SG"
+      openstack_config: *openstack_config
+      rules:
+        - remote_ip_prefix: 0.0.0.0/0
+          port: 22
+        - remote_ip_prefix: 0.0.0.0/0
+          port: 80
+        - remote_ip_prefix: 0.0.0.0/0
+          port: 5000
+
+  config_holder:
+    type: configuration_loader
+    properties:
+      parameters_json: { get_input: configuration }
+
+  cloudify_host_cloud_config:
+    type: cloudify.nodes.CloudInit.CloudConfig
+    properties:
+      resource_config:
+        users:
+        - name: { get_input: agent_user }
+          groups: sudo
+          shell: /bin/bash
+          sudo: ['ALL=(ALL) NOPASSWD:ALL']
+          ssh-authorized-keys:
+          - { get_input: agent_key_public }
+
+
+  host_A_floating_ip:
+    type: cloudify.openstack.nodes.FloatingIP
+    properties:
+      openstack_config: *openstack_config
+      floatingip:
+        floating_network_name: { get_input: external_network }
+
+  host_A:
+    type: openstack_host
+    properties:
+      openstack_config: *openstack_config
+    relationships:
+      - type: cloudify.relationships.depends_on
+        target: cloudify_host_cloud_config
+      - type: cloudify.openstack.server_connected_to_security_group
+        target: webserver_sg
+      - type: cloudify.openstack.server_connected_to_floating_ip
+        target: host_A_floating_ip
+
+  webserver_A:
+    type: webserver
+    properties:
+      params_list:
+        - Card_1
+        - Card_2
+        - Card_3
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: host_A
+      - type: load_from_config
+        target: config_holder
+
+  host_B_floating_ip:
+    type: cloudify.openstack.nodes.FloatingIP
+    properties:
+      openstack_config: *openstack_config
+      floatingip:
+        floating_network_name: { get_input: external_network }
+
+  host_B:
+    type: openstack_host
+    properties:
+      openstack_config: *openstack_config
+    relationships:
+      - type: cloudify.relationships.depends_on
+        target: cloudify_host_cloud_config
+      - type: cloudify.openstack.server_connected_to_security_group
+        target: webserver_sg
+      - type: cloudify.openstack.server_connected_to_floating_ip
+        target: host_B_floating_ip
+
+  webserver_B:
+    type: webserver
+    properties:
+      params_list:
+        - Card_3
+        - Card_4
+        - Card_5
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: host_B
+      - type: load_from_config
+        target: config_holder
+
+  host_C_floating_ip:
+    type: cloudify.openstack.nodes.FloatingIP
+    properties:
+      openstack_config: *openstack_config
+      floatingip:
+        floating_network_name: { get_input: external_network }
+
+  host_C:
+    type: openstack_host
+    properties:
+      openstack_config: *openstack_config
+    relationships:
+      - type: cloudify.relationships.depends_on
+        target: cloudify_host_cloud_config
+      - type: cloudify.openstack.server_connected_to_security_group
+        target: webserver_sg
+      - type: cloudify.openstack.server_connected_to_floating_ip
+        target: host_C_floating_ip
+
+  webserver_C:
+    type: webserver
+    properties:
+      params_list:
+        - Card_1
+        - Card_3
+        - Card_5
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: host_C
+      - type: load_from_config
+        target: config_holder
+
+outputs:
+  webserver_A:
+    value: { get_attribute: [ host_A_floating_ip, floating_ip_address ]}
+  webserver_B:
+    value: { get_attribute: [ host_B_floating_ip, floating_ip_address ]}
+  webserver_C:
+    value: { get_attribute: [ host_C_floating_ip, floating_ip_address ]}
