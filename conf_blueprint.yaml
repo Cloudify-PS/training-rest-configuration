@@ -1,0 +1,108 @@
+tosca_definitions_version: cloudify_dsl_1_3
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/5.0.0/types.yaml
+  - plugin:cloudify-openstack-plugin
+  - plugin:cloudify-utilities-plugin
+
+
+inputs:
+
+  agent_key_private:
+    description: >
+      The content of the agent's private key.
+    default: { get_secret: agent_key_private }
+
+  env_setup_deployment_name:
+    description: >
+      name of cards server environment setup deployment
+    default: env_setup
+
+  configuration:
+    default:
+      Card_1:
+        title: "First"
+        content: "First Card"
+      Card_2:
+        title: "Second"
+        content: "Second Card"
+      Card_3:
+        title: "Third"
+        content: "Third Card"
+
+dsl_definitions:
+
+  openstack_config: &openstack_config
+    username: { get_secret: keystone_username }
+    password: { get_secret: keystone_password }
+    tenant_name: { get_secret: keystone_tenant_name }
+    auth_url: { get_secret: keystone_url }
+    region: { get_secret: keystone_region }
+
+
+node_types:
+  cards_rest:
+    derived_from: cloudify.rest.Requests
+    properties:
+      params_list:
+        default: []
+      params:
+        default: {}
+
+
+node_templates:
+
+  config_holder:
+    type: configuration_loader
+    properties:
+      parameters_json: { get_input: configuration }
+
+
+  env_setup:
+    type: cloudify.nodes.SharedResource
+    properties:
+      resource_config:
+        deployment:
+          id: { get_input : env_setup_deployment_name }
+
+
+  cards_server:
+    type: cloudify.nodes.Compute
+    properties:
+      ip: { get_capability: [ get_attribute : [env_setup, deployment, id], server_ip ] }
+      agent_config:
+        user: centos
+        key: { get_input: agent_key_private }
+    relationships:
+      - type: cloudify.relationships.depends_on
+        target: env_setup
+
+  cards_server_conf:
+    type: cards_rest
+    properties:
+      hosts: [{ get_capability: [ get_attribute : [env_setup, deployment, id], server_ip ] }]
+      port: 5000
+      params_list:
+        - Card_1
+        - Card_2
+        - Card_3
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        start:
+          inputs:
+            template_file: templates/add_template.yaml
+            params:
+              cards_list: { get_property: [SELF,params_list]}
+              cards_values: { get_attribute: [SELF, params] }
+        update:
+          inputs:
+            template_file: templates/edit_template.yaml
+            params:
+              cards_list: { get_property: [SELF,params_list]}
+              cards_values: { get_attribute: [SELF, params] }
+        is_alive: {}
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: cards_server
+      - type: load_from_config
+        target: config_holder

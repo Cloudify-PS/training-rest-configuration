@@ -1,0 +1,34 @@
+rest_calls:
+  - path: /api/cards/{{cards_list[0]}}/edit
+    method: PUT
+    headers:
+      Content-type: application/json
+    payload:
+      title: '{{cards_values[cards_list[0]].title}}'
+      content: '{{cards_values[cards_list[0]].content}}'
+    response_format: json
+    recoverable_codes: [201]
+    response_translation: [result]
+    response_expectation:
+  - path: /api/cards/{{cards_list[1]}}/edit
+    method: PUT
+    headers:
+      Content-type: application/json
+    payload:
+      title: '{{cards_values[cards_list[1]].title}}'
+      content: '{{cards_values[cards_list[1]].content}}'
+    response_format: json
+    recoverable_codes: [201]
+    response_translation: [result]
+    response_expectation:
+  - path: /api/cards/{{cards_list[2]}}/edit
+    method: PUT
+    headers:
+      Content-type: application/json
+    payload:
+      title: '{{cards_values[cards_list[2]].title}}'
+      content: '{{cards_values[cards_list[2]].content}}'
+    response_format: json
+    recoverable_codes: [201]
+    response_translation: [result]
+    response_expectation:

@@ -8,15 +8,9 @@ params:
   Card_3:
     title: "Twelvth"
     content: "Twelvth Card"
-  Card_4:
-    title: "Thirteenth"
-    content: "Thirteenth Card"
-  Card_5:
-    title: "Fourteenth"
-    content: "Fourteenth Card"
 
 merge_dict: False
 
-node_types_to_update: [ webserver ]
+node_types_to_update: [ cards_server_conf ]
 
 configuration_node_id: config_holder

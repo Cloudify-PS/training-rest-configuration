@@ -8,15 +8,9 @@ params:
   Card_3:
     title: "When"
     content: "When did you arrive ??"
-  Card_4:
-    title: "Where"
-    content: "Where do you plan on going ??"
-  Card_5:
-    title: "Why"
-    content: "Why are you going there ??"
 
 merge_dict: False
 
-node_types_to_update: [ webserver ]
+node_types_to_update: [ cards_server_conf ]
 
 configuration_node_id: config_holder
